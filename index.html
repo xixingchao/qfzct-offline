@@ -2,7 +2,32 @@
 <!DOCTYPE html>
 <html>
 
-<head>
+<head><script>
+/* 浏览器自动播放策略会在"无用户手势"时拒绝 audio.play()，而橙光这套播放器
+   只在载入时 play() 一次、被拒后不再重试，结果整局没有 BGM。
+   这里兜住第一次 NotAllowedError，在用户首次点击/按键时重放。 */
+(function () {
+  var pending = [];
+  var play = HTMLMediaElement.prototype.play;
+  HTMLMediaElement.prototype.play = function () {
+    var el = this;
+    var p = play.apply(el, arguments);
+    if (p && p.catch) p.catch(function (e) {
+      if (e && e.name === 'NotAllowedError' && pending.indexOf(el) < 0) pending.push(el);
+    });
+    return p;
+  };
+  function unlock() {
+    document.removeEventListener('pointerdown', unlock, true);
+    document.removeEventListener('keydown', unlock, true);
+    for (var i = 0; i < pending.length; i++) { try { play.call(pending[i]); } catch (e) {} }
+    pending.length = 0;
+  }
+  document.addEventListener('pointerdown', unlock, true);
+  document.addEventListener('keydown', unlock, true);
+})();
+</script>
+
     <meta charset='utf-8'/>
     <title>潜伏之赤途</title>
     <meta name='viewport'
